@@ -69,20 +69,26 @@ class UI(Thread):
         while running:
             cmd = sys.stdin.readline().rstrip("\r\n")
             if cmd=="u":
-                self.state = UI_STATE_CONTACT
-                self.line = self.line-1
-                if(self.line<self.lines[0]):
-                    self.lines[0]=self.m(self.lines[0]-1)
-                    self.lines[1]=self.m(self.lines[1]-1)
-                self.line = self.m(self.line)
+                if(self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
+                    self.state = UI_STATE_CONTACT
+                else:
+                    self.state = UI_STATE_CONTACT
+                    self.line = self.line-1
+                    if(self.line<self.lines[0]):
+                        self.lines[0]=self.m(self.lines[0]-1)
+                        self.lines[1]=self.m(self.lines[1]-1)
+                    self.line = self.m(self.line)
                 self.display()
             elif cmd=="d":
-                self.state = UI_STATE_CONTACT
-                self.line = self.line+1
-                if(self.line>self.lines[1]):
-                    self.lines[0]=self.m(self.lines[0]+1)
-                    self.lines[1]=self.m(self.lines[1]+1)
-                self.line = self.m(self.line)
+                if(self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
+                    self.state = UI_STATE_CONTACT
+                else:
+                    self.state = UI_STATE_CONTACT
+                    self.line = self.line+1
+                    if(self.line>self.lines[1]):
+                        self.lines[0]=self.m(self.lines[0]+1)
+                        self.lines[1]=self.m(self.lines[1]+1)
+                    self.line = self.m(self.line)
                 self.display()
             elif cmd=="":
                 if self.state == UI_STATE_CONTACT:
