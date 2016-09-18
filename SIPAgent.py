@@ -4,9 +4,9 @@ from CallCallback import CallCallback
 
 # Logging callback
 def log_cb(level, str, len):
-    print str,        
+    print str,
 
-class SIPAgent : 
+class SIPAgent :
     door_app = None
     cfg = {}
     account=None
@@ -22,10 +22,10 @@ class SIPAgent :
 
     def start(self):
         try:
-            print "\nListening on", self.transport.info().host, 
+            print "\nListening on", self.transport.info().host,
             print "port", self.transport.info().port, "\n"
 
-            self.account = self.lib.create_account(pj.AccountConfig(self.cfg['registrar'],self.cfg['username'],self.cfg['passwrd']))
+            self.account = self.lib.create_account(pj.AccountConfig(self.cfg['registrar'],self.cfg['username'],self.cfg['password']))
 
             acc_cb = AccountCallback(self.account,self)
             self.account.set_callback(acc_cb)
@@ -35,7 +35,7 @@ class SIPAgent :
                 self.account.info().reg_status, \
                 "(",self.account.info().reg_reason,")", \
                 "sip:",self.transport.info().host, \
-                ":",str(self.transport.info().port) 
+                ":",str(self.transport.info().port)
             self.door_app.notify('sip_agent_ok')
             return self.account
         except pj.Error, e:

@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 import pjsua as pj
@@ -23,37 +23,14 @@ from flask import render_template
 from flask import request, redirect, url_for
 from flask_cors import CORS, cross_origin
 from DoorStation import DoorStation
+import json
 
 flaskApp = Flask(__name__)
 CORS(flaskApp)
 
-log_level=0
-http_port = 8086
-door_app = None
-sip_cfg = {
-    'registrar' : "192.168.1.129", 
-    'username' : "5010", 
-    'local_sip_port' : 5080,
-    'passwrd' : "123456"
-}
+door_station = None
 
-contacts = [{
-    'name':'aaaaa','number':'11'
-},{
-    'name':'bbbbb','number':'22'
-},{
-    'name':'ccccc','number':'33'
-},{
-    'name':'ddddd','number':'44'
-},{
-    'name':'eeeee','number':'55'
-},{
-    'name':'fffff','number':'66'
-},{
-    'name':'ggggg','number':'77'
-},{
-    'name':'hhhhh','number':'88'
-}]
+config = open('config.json').read(100000)
 
 @flaskApp.route('/')
 def index():
@@ -61,11 +38,11 @@ def index():
 
 @flaskApp.route('/call/<uri>')
 def make_call(uri):
-    global door_app
+    global door_station
     try:
         uri = "sip:5020@192.168.1.129"
         return jsonify({
-            'call' : door_app.get_sip_agent().make_call(uri)
+            'call' : door_station.get_sip_agent().make_call(uri)
         })
     except pj.Error, e:
         print "Exception: " + str(e)
@@ -74,18 +51,18 @@ def make_call(uri):
 if __name__ == "__main__":
     try:
         # Start
-        door_app = DoorApp()
-        door_app.init_ui(contacts)
-        door_app.init_sip_agent(sip_cfg,log_level)
-        door_app.get_ui().display()
-        flaskApp.run(host='0.0.0.0', port=http_port,debug=True,use_reloader=False)
-        
+        door_station = DoorStation()
+        door_station.init_ui(config['contacts'])
+        door_station.init_sip_agent(config['sip_cfg'],config['log_level'])
+        door_station.get_ui().display()
+        flaskApp.run(host='0.0.0.0', port=config['http_port'],debug=True,use_reloader=False)
+
     except pj.Error, e:
         print "Exception: " + str(e)
-        
+
     # Shutdown
-    door_app.get_sip_agent().transport = None
-    door_app.get_sip_agent().account.delete()
-    door_app.get_sip_agent().account = None
-    door_app.get_sip_agent().lib.destroy()
-    door_app.get_sip_agent().lib = None
+    door_station.get_sip_agent().transport = None
+    door_station.get_sip_agent().account.delete()
+    door_station.get_sip_agent().account = None
+    door_station.get_sip_agent().lib.destroy()
+    door_station.get_sip_agent().lib = None
