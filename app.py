@@ -23,6 +23,7 @@ from flask import render_template
 from flask import request, redirect, url_for
 from flask_cors import CORS, cross_origin
 from DoorStation import DoorStation
+import UI
 import json
 
 flaskApp = Flask(__name__)
@@ -30,7 +31,16 @@ CORS(flaskApp)
 
 door_station = None
 
-config = open('config.json').read(100000)
+def load_config(filename):
+    def ascii_encode_dict(data):
+        def ascii_encode(x):
+            if callable(getattr(x, "encode", None)):
+                return x.encode('ascii')
+            return x
+        return dict(map(ascii_encode, pair) for pair in data.items())
+    return json.loads(open(filename).read(100000),object_hook=ascii_encode_dict)
+
+config = load_config('config.json')
 
 @flaskApp.route('/')
 def index():
@@ -54,7 +64,6 @@ if __name__ == "__main__":
         door_station = DoorStation()
         door_station.init_ui(config['contacts'])
         door_station.init_sip_agent(config['sip_cfg'],config['log_level'])
-        door_station.get_ui().display()
         flaskApp.run(host='0.0.0.0', port=config['http_port'],debug=True,use_reloader=False)
 
     except pj.Error, e:

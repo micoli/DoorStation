@@ -1,6 +1,7 @@
 import pjsua as pj
 import threading
 from CallCallback import CallCallback
+import  DoorStation
 
 class AccountCallback(pj.AccountCallback):
     sem = None
@@ -21,10 +22,10 @@ class AccountCallback(pj.AccountCallback):
     # Notification on incoming call
     def on_incoming_call(self, call):
         if self.sip_agent.current_call:
-            self.sip_agent.door_app.notify('double_call')
+            self.sip_agent.door_station.notify(DoorStation.NOTIFICATION_DOUBLE_CALL)
             call.answer(486, "Busy")
             return
-        self.sip_agent.door_app.notify('auto_answer')
+        self.sip_agent.door_station.notify(DoorStation.NOTIFICATION_AUTO_ANSWER)
         self.sip_agent.current_call = call
         self.sip_agent.current_call.set_callback(CallCallback(self.sip_agent.current_call))
         self.sip_agent.current_call.answer(200)
