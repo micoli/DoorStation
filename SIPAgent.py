@@ -48,6 +48,10 @@ class SIPAgent :
         if self.current_call:
             self.door_station.notify(DoorStation.NOTIFICATION_FORBIDDEN_DOUBLE_CALL)
             return "busy"
-        self.current_call = self.account.make_call(uri, cb=CallCallback(self))
-        self.door_station.notify(DoorStation.NOTIFICATION_CALL_INITIATED)
+        try:
+            self.current_call = self.account.make_call(uri, cb=CallCallback(self))
+            self.door_station.notify(DoorStation.NOTIFICATION_CALL_INITIATED)
+        except pj.Error, e:
+            print "Exception11111: " + str(e)
+            self.door_station.notify(DoorStation.NOTIFICATION_DISCONNECTED)
         return "ok"

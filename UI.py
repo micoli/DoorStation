@@ -48,7 +48,7 @@ class UI(Thread):
                 print "|[%2d] %-11.11s|"%(l2+1,self.contacts[l2]['name'])
 
         elif self.state == UI_STATE_CONFIRM_CALL:
-            print "|Appel ?        |"
+            print "|Appel ?         |"
             print "|%-16.16s|"%(a2)
 
         elif self.state == UI_STATE_CALLING:
@@ -59,7 +59,6 @@ class UI(Thread):
             print "| %02d:%02d|"%(10,20)
             print "|%-16.16s|"%(a2)
             pass
-
         print "------------------"
 
     def run(self):
@@ -69,37 +68,49 @@ class UI(Thread):
         while running:
             cmd = sys.stdin.readline().rstrip("\r\n")
             if cmd=="u":
-                if(self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
-                    self.state = UI_STATE_CONTACT
-                else:
-                    self.state = UI_STATE_CONTACT
-                    self.line = self.line-1
-                    if(self.line<self.lines[0]):
-                        self.lines[0]=self.m(self.lines[0]-1)
-                        self.lines[1]=self.m(self.lines[1]-1)
-                    self.line = self.m(self.line)
-                self.display()
+                self.cmd_up()
             elif cmd=="d":
-                if(self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
-                    self.state = UI_STATE_CONTACT
-                else:
-                    self.state = UI_STATE_CONTACT
-                    self.line = self.line+1
-                    if(self.line>self.lines[1]):
-                        self.lines[0]=self.m(self.lines[0]+1)
-                        self.lines[1]=self.m(self.lines[1]+1)
-                    self.line = self.m(self.line)
-                self.display()
+                self.cmd_down()
             elif cmd=="":
-                if self.state == UI_STATE_CONTACT:
-                    self.set_state (UI_STATE_CONFIRM_CALL)
-                    self.display('',self.contacts[self.line]['name'])
-                elif self.state == UI_STATE_CONFIRM_CALL:
-                    self.door_station.notify(DoorStation.NOTIFICATION_CALL_REQUESTED,self.contacts[self.line])
-                print ">> enter"
+                self.cmd_enter()
             elif cmd=="x":
                 running = False
-                self.door_station.notify(DoorStation.NOTIFICATION_EXIT_REQUESTED)
+                self.cmd_exit()
             else:
                 self.display()
             time.sleep(0.1)
+
+    def cmd_up(self):
+        if(self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
+            self.state = UI_STATE_CONTACT
+        else:
+            self.state = UI_STATE_CONTACT
+            self.line = self.line-1
+            if(self.line<self.lines[0]):
+                self.lines[0]=self.m(self.lines[0]-1)
+                self.lines[1]=self.m(self.lines[1]-1)
+            self.line = self.m(self.line)
+        self.display()
+
+    def cmd_down(self):
+        if(self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
+            self.state = UI_STATE_CONTACT
+        else:
+            self.state = UI_STATE_CONTACT
+            self.line = self.line+1
+            if(self.line>self.lines[1]):
+                self.lines[0]=self.m(self.lines[0]+1)
+                self.lines[1]=self.m(self.lines[1]+1)
+            self.line = self.m(self.line)
+        self.display()
+
+    def cmd_enter(self):
+        if self.state == UI_STATE_CONTACT:
+            self.set_state (UI_STATE_CONFIRM_CALL)
+            self.display('',self.contacts[self.line]['name'])
+        elif self.state == UI_STATE_CONFIRM_CALL:
+            self.door_station.notify(DoorStation.NOTIFICATION_CALL_REQUESTED,self.contacts[self.line])
+            self.display('',self.contacts[self.line]['name'])
+
+    def cmd_exit(self):
+        self.door_station.notify(DoorStation.NOTIFICATION_EXIT_REQUESTED)

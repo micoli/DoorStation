@@ -1,6 +1,7 @@
 import sys,os
 from SIPAgent import SIPAgent
-from UI import UI
+import UI
+import requests
 
 NOTIFICATION_DOUBLE_CALL = 'double_call'
 NOTIFICATION_AUTO_ANSWER = 'auto_answer'
@@ -28,7 +29,7 @@ class DoorStation:
         return self.sip_agent
 
     def init_ui(self,contacts):
-        self.ui = UI(self,contacts)
+        self.ui = UI.UI(self,contacts)
         self.ui.start()
         return self.ui
 
@@ -39,19 +40,29 @@ class DoorStation:
         print "notification %s [%s]"%(notification,repr(args))
         if notification == NOTIFICATION_EXIT_REQUESTED:
             os._exit(1)
-        elif notification == NOTIFICATION_DOUBLE_CALL :
-            pass
         elif notification == NOTIFICATION_AUTO_ANSWER :
             pass
-        elif notification == NOTIFICATION_DISCONNECTED :
-            pass
-        elif notification == NOTIFICATION_MEDIA_ACTIVE :
-            pass
-        elif notification == NOTIFICATION_MEDIA_INACTIVE :
+        elif notification == NOTIFICATION_UI_OK :
             pass
         elif notification == NOTIFICATION_SIP_START :
             pass
         elif notification == NOTIFICATION_SIP_AGENT_OK :
+            pass
+        elif notification == NOTIFICATION_DOUBLE_CALL :
+            self.ui.set_state(UI.UI_STATE_CONTACT)
+            self.ui.display()
+            pass
+        elif notification == NOTIFICATION_DISCONNECTED :
+            self.ui.set_state(UI.UI_STATE_CONTACT)
+            self.ui.display()
+            pass
+        elif notification == NOTIFICATION_MEDIA_ACTIVE :
+            self.ui.set_state(UI.UI_STATE_INCALL)
+            self.ui.display('',self.ui.contacts[self.ui.line]['name'])
+            pass
+        elif notification == NOTIFICATION_MEDIA_INACTIVE :
+            self.ui.set_state(UI.UI_STATE_CONTACT)
+            self.ui.display()
             pass
         elif notification == NOTIFICATION_FORBIDDEN_DOUBLE_CALL :
             pass
@@ -59,9 +70,8 @@ class DoorStation:
             self.ui.set_state(UI.UI_STATE_CALLING)
             self.ui.display("",args)
             pass
-        elif notification == NOTIFICATION_UI_OK :
-            pass
         elif notification == NOTIFICATION_CALL_REQUESTED :
+            requests.get('http://127.0.0.1:8086/call/',params={'uri':args['number']})
             pass
         elif notification == NOTIFICATION_EXIT_REQUESTED :
             pass
