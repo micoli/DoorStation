@@ -23,12 +23,16 @@ class UI(Thread):
     def __init__(self,door_station,contacts):
         Thread.__init__(self)
         self.rearmableTimer = RearmableTimer(self.light_shutdown)
+        self.rearmableTimer.setCounterCallback(self.light_on)
         self.contacts = contacts
         self.door_station = door_station
         self.door_station.notify(DoorStation.NOTIFICATION_UI_OK)
 
+    def light_on(self,cnt):
+        print "light on %d" % (cnt)
+        
     def light_shutdown(self):
-        print "light_shutdown light_shutdown"
+        print "light shutdown"
         
     def m(self,n):
         return (n)%len(self.contacts)
@@ -46,7 +50,7 @@ class UI(Thread):
         elif self.state == UI_STATE_CONTACT:
             l1 = self.lines[0]
             l2 = self.lines[1]
-            if(self.lines[0]==self.line):
+            if (self.lines[0]==self.line):
                 print "|[%2d] %-11.11s|"%(l1+1,self.contacts[l1]['name'])
                 print "| %2d  %-11.11s|"%(l2+1,self.contacts[l2]['name'])
             else:
@@ -72,7 +76,8 @@ class UI(Thread):
         self.set_state(UI_STATE_CONTACT)
         self.display()
         while running:
-            cmd = readchar.readchar()
+            cmd = readchar.readkey()
+            print ""
             self.rearmableTimer.run(5)
             if cmd=="u":
                 self.cmd_up()
@@ -88,24 +93,24 @@ class UI(Thread):
             time.sleep(0.1)
 
     def cmd_up(self):
-        if(self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
+        if (self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
             self.state = UI_STATE_CONTACT
         else:
             self.state = UI_STATE_CONTACT
             self.line = self.line-1
-            if(self.line<self.lines[0]):
+            if (self.line < self.lines[0]):
                 self.lines[0]=self.m(self.lines[0]-1)
                 self.lines[1]=self.m(self.lines[1]-1)
             self.line = self.m(self.line)
         self.display()
 
     def cmd_down(self):
-        if(self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
+        if (self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
             self.state = UI_STATE_CONTACT
         else:
             self.state = UI_STATE_CONTACT
             self.line = self.line+1
-            if(self.line>self.lines[1]):
+            if (self.line > self.lines[1]):
                 self.lines[0]=self.m(self.lines[0]+1)
                 self.lines[1]=self.m(self.lines[1]+1)
             self.line = self.m(self.line)
