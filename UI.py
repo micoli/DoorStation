@@ -3,6 +3,8 @@ import time
 from SIPAgent import SIPAgent
 from threading import Thread
 import DoorStation
+from RearmableTimer import RearmableTimer
+import readchar
 
 ## http://raspi.tv/2013/how-to-use-interrupts-with-python-on-the-raspberry-pi-and-rpi-gpio-part-2
 UI_STATE_BOOTING = 0
@@ -20,10 +22,14 @@ class UI(Thread):
 
     def __init__(self,door_station,contacts):
         Thread.__init__(self)
+        self.rearmableTimer = RearmableTimer(self.light_shutdown)
         self.contacts = contacts
         self.door_station = door_station
         self.door_station.notify(DoorStation.NOTIFICATION_UI_OK)
 
+    def light_shutdown(self):
+        print "light_shutdown light_shutdown"
+        
     def m(self,n):
         return (n)%len(self.contacts)
 
@@ -66,7 +72,8 @@ class UI(Thread):
         self.set_state(UI_STATE_CONTACT)
         self.display()
         while running:
-            cmd = sys.stdin.readline().rstrip("\r\n")
+            cmd = readchar.readchar()
+            self.rearmableTimer.run(5)
             if cmd=="u":
                 self.cmd_up()
             elif cmd=="d":
