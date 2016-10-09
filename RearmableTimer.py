@@ -33,7 +33,7 @@ class RearmableTimer():
         if (self.rcallback):
             self.rcallback(self.count,*self.rargs, **self.rkwargs)
         self.thread = None
-        if(self.count==0):
+        if(self.count<=0):
             self.callback(*self.args, **self.kwargs)
         else:
             if self.running:
