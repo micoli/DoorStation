@@ -4,9 +4,7 @@ from threading import Thread
 import DoorStation
 from RearmableTimer import RearmableTimer
 import readchar
-import smbus
 import time
-import RPi.GPIO as GPIO
 
 ## http://raspi.tv/2013/how-to-use-interrupts-with-python-on-the-raspberry-pi-and-rpi-gpio-part-2
 UI_STATE_BOOTING = 0
@@ -39,6 +37,7 @@ E_DELAY = 0.0005
 
 
 class UI(Thread):
+    bus = None
     contacts = []
     line = 0
     lines= [0,1]
@@ -52,10 +51,11 @@ class UI(Thread):
         self.contacts = contacts
         self.door_station = door_station
         self.door_station.notify(DoorStation.NOTIFICATION_UI_OK)
-        self.lcd_init()
+        #self.lcd_init()
         self.gpio_init()
         
     def lcd_init(self):
+	import smbus
         self.bus = smbus.SMBus(1) # Rev 2 Pi uses 1
         # Initialise display
         self.lcd_byte(0x33,LCD_CMD) # 110011 Initialise
@@ -107,19 +107,22 @@ class UI(Thread):
     
     
     def lcd_string(self, message,line):
-        # Send string to display
-        message = message.ljust(LCD_WIDTH," ")
-        self.lcd_byte(line, LCD_CMD)
-        for i in range(LCD_WIDTH):
-            self.lcd_byte(ord(message[i]),LCD_CHR)
+	print message
+	if self.bus != None:
+            # Send string to display
+            message = message.ljust(LCD_WIDTH," ")
+            self.lcd_byte(line, LCD_CMD)
+            for i in range(LCD_WIDTH):
+                self.lcd_byte(ord(message[i]),LCD_CHR)
 
     def gpio_init(self):
+	import RPi.GPIO as GPIO
         # Initialise display
         GPIO.setmode(GPIO.BCM)
 
-        self.gpio_init_button(17, self.gpio_cmd_up)
-        self.gpio_init_button(22, self.gpio_cmd_down) 
-        self.gpio_init_button( 4, self.gpio_cmd_enter)
+        self.gpio_init_button(GPIO, 17, self.gpio_cmd_up)
+        self.gpio_init_button(GPIO, 22, self.gpio_cmd_down) 
+        self.gpio_init_button(GPIO,  4, self.gpio_cmd_enter)
 
     def gpio_cmd_up(self,channel):
 	self.cmd_up()
@@ -130,7 +133,7 @@ class UI(Thread):
     def gpio_cmd_enter(self,channel):
 	self.cmd_enter()
         
-    def gpio_init_button(self,pin,callback):
+    def gpio_init_button(self,GPIO, pin, callback):
         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.add_event_detect(pin, GPIO.FALLING, callback=callback, bouncetime=300)
 
