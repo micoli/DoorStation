@@ -51,11 +51,11 @@ class UI(Thread):
         self.contacts = contacts
         self.door_station = door_station
         self.door_station.notify(DoorStation.NOTIFICATION_UI_OK)
-        #self.lcd_init()
+        self.lcd_init()
         self.gpio_init()
         
     def lcd_init(self):
-	import smbus
+        import smbus
         self.bus = smbus.SMBus(1) # Rev 2 Pi uses 1
         # Initialise display
         self.lcd_byte(0x33,LCD_CMD) # 110011 Initialise
@@ -105,7 +105,6 @@ class UI(Thread):
         self.bus.write_byte(I2C_ADDR,(bits & ~ENABLE))
         time.sleep(E_DELAY)
     
-    
     def lcd_string(self, message,line):
         print message
         if self.bus != None:
@@ -125,13 +124,13 @@ class UI(Thread):
         self.gpio_init_button(GPIO,  4, self.gpio_cmd_enter)
 
     def gpio_cmd_up(self,channel):
-	self.cmd_up()
+        self.cmd_up()
 
     def gpio_cmd_down(self,channel):
-	self.cmd_down()
+        self.cmd_down()
 
     def gpio_cmd_enter(self,channel):
-	self.cmd_enter()
+        self.cmd_enter()
         
     def gpio_init_button(self,GPIO, pin, callback):
         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -142,7 +141,8 @@ class UI(Thread):
         
     def light_shutdown(self):
         print "light shutdown"
-        self.lcd_backlightoff()
+        if self.bus != None:
+            self.lcd_backlightoff()
         
     def m(self,n):
         return (n)%len(self.contacts)
