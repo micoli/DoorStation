@@ -107,8 +107,8 @@ class UI(Thread):
     
     
     def lcd_string(self, message,line):
-	print message
-	if self.bus != None:
+        print message
+        if self.bus != None:
             # Send string to display
             message = message.ljust(LCD_WIDTH," ")
             self.lcd_byte(line, LCD_CMD)
@@ -116,7 +116,7 @@ class UI(Thread):
                 self.lcd_byte(ord(message[i]),LCD_CHR)
 
     def gpio_init(self):
-	import RPi.GPIO as GPIO
+        import RPi.GPIO as GPIO
         # Initialise display
         GPIO.setmode(GPIO.BCM)
 
