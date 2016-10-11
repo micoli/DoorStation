@@ -65,7 +65,6 @@ if __name__ == "__main__":
         door_station = DoorStation()
         door_station.init_ui(config['contacts'])
         #door_station.init_sip_agent(config['sip_cfg'],config['log_level'])
-        print "eeee"
         flaskApp.run(host='0.0.0.0', port=config['http_port'],debug=True,use_reloader=False)
 
     except pj.Error, e:

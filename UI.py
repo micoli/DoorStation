@@ -6,7 +6,6 @@ from RearmableTimer import RearmableTimer
 import readchar
 import time
 
-## http://raspi.tv/2013/how-to-use-interrupts-with-python-on-the-raspberry-pi-and-rpi-gpio-part-2
 UI_STATE_BOOTING = 0
 UI_STATE_CONTACT = 1
 UI_STATE_CONFIRM_CALL = 2
@@ -51,8 +50,12 @@ class UI(Thread):
         self.contacts = contacts
         self.door_station = door_station
         self.door_station.notify(DoorStation.NOTIFICATION_UI_OK)
-        self.lcd_init()
-        self.gpio_init()
+        #self.lcd_init()
+        #self.gpio_init()
+        self.print_at(' '+'-'*16+' '+' '*60,1,1)
+        self.print_at('|'+' '*16+'|'+' '*60,1,2)
+        self.print_at('|'+' '*16+'|'+' '*60,1,3)
+        self.print_at(' '+'-'*16+' '+' '*60,1,4)
         
     def lcd_init(self):
         import smbus
@@ -104,15 +107,6 @@ class UI(Thread):
         time.sleep(E_PULSE)
         self.bus.write_byte(I2C_ADDR,(bits & ~ENABLE))
         time.sleep(E_DELAY)
-    
-    def lcd_string(self, message,line):
-        print message
-        if self.bus != None:
-            # Send string to display
-            message = message.ljust(LCD_WIDTH," ")
-            self.lcd_byte(line, LCD_CMD)
-            for i in range(LCD_WIDTH):
-                self.lcd_byte(ord(message[i]),LCD_CHR)
 
     def gpio_init(self):
         import RPi.GPIO as GPIO
@@ -137,10 +131,10 @@ class UI(Thread):
         GPIO.add_event_detect(pin, GPIO.FALLING, callback=callback, bouncetime=300)
 
     def light_on(self,cnt):
-        print "light on %d" % (cnt)
+        self.print_at("light on %d    " % (cnt),30,1)
         
     def light_shutdown(self):
-        print "light shutdown"
+        self.print_at("light off      " ,30,1)
         if self.bus != None:
             self.lcd_backlightoff()
         
@@ -150,36 +144,53 @@ class UI(Thread):
     def set_state(self,state):
         self.state = state
 
+    
+    def print_at(self,stri, x=1, y=1):
+        print "\033[%d;%df%s\033[%d;%df%s" % (y,x," "*16,y,x,stri)
+        
+    def display_string(self, message,line):
+        self.print_at(' '+'-'*16+' ',1,1)
+        self.print_at(' '+'-'*16+' ',1,4)
+        if line == LCD_LINE_1:
+            self.print_at(message,2,2)
+        else:
+            self.print_at(message,2,3)
+            
+        if self.bus != None:
+            # Send string to display
+            message = message.ljust(LCD_WIDTH," ")
+            self.lcd_byte(line, LCD_CMD)
+            for i in range(LCD_WIDTH):
+                self.lcd_byte(ord(message[i]),LCD_CHR)
+
     def display(self,a1=None,a2=None):
-        print "------------------"
         if self.state == UI_STATE_BOOTING:
-            self.lcd_string("****  BOOT  ****" ,LCD_LINE_1)
-            self.lcd_string("****************" ,LCD_LINE_2)
+            self.display_string("****  BOOT  ****" ,LCD_LINE_1)
+            self.display_string("****************" ,LCD_LINE_2)
             pass
 
         elif self.state == UI_STATE_CONTACT:
             l1 = self.lines[0]
             l2 = self.lines[1]
             if (self.lines[0]==self.line):
-                self.lcd_string("[%2d] %-11.11s"%(l1+1,self.contacts[l1]['name']) ,LCD_LINE_1)
-                self.lcd_string(" %2d  %-11.11s"%(l2+1,self.contacts[l2]['name']) ,LCD_LINE_2)
+                self.display_string("[%2d] %-11.11s" % (l1+1,self.contacts[l1]['name']) ,LCD_LINE_1)
+                self.display_string(" %2d  %-11.11s" % (l2+1,self.contacts[l2]['name']) ,LCD_LINE_2)
             else:
-                self.lcd_string(" %2d  %-11.11s"%(l1+1,self.contacts[l1]['name']) ,LCD_LINE_1)
-                self.lcd_string("[%2d] %-11.11s"%(l2+1,self.contacts[l2]['name']) ,LCD_LINE_2)
+                self.display_string(" %2d  %-11.11s" % (l1+1,self.contacts[l1]['name']) ,LCD_LINE_1)
+                self.display_string("[%2d] %-11.11s" % (l2+1,self.contacts[l2]['name']) ,LCD_LINE_2)
 
         elif self.state == UI_STATE_CONFIRM_CALL:
-            self.lcd_string("Appel ?         " ,LCD_LINE_1)
-            self.lcd_string("%-16.16s"%(a2)    ,LCD_LINE_2)
+            self.display_string("Appel ?         " ,LCD_LINE_1)
+            self.display_string("%-16.16s" % (a2)  ,LCD_LINE_2)
 
         elif self.state == UI_STATE_CALLING:
-            self.lcd_string("Appel en cours.." ,LCD_LINE_1)
-            self.lcd_string("%-16.16s"%(a2)    ,LCD_LINE_2)
+            self.display_string("Appel en cours.." ,LCD_LINE_1)
+            self.display_string("%-16.16s" % (a2)  ,LCD_LINE_2)
 
         elif self.state == UI_STATE_INCALL:
-            self.lcd_string(" %02d:%02d"%(10,20) ,LCD_LINE_1)
-            self.lcd_string("%-16.16s"%(a2)      ,LCD_LINE_2)
+            self.display_string(" %02d:%02d"%(10,20) ,LCD_LINE_1)
+            self.display_string("%-16.16s" % (a2)    ,LCD_LINE_2)
             pass
-        print "------------------"
 
     def run(self):
         running = True
