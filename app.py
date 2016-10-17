@@ -25,11 +25,13 @@ from flask_cors import CORS, cross_origin
 from DoorStation import DoorStation
 import UI
 import json
+import logging
 
 flaskApp = Flask(__name__)
 CORS(flaskApp)
 
 door_station = None
+logger = logging.getLogger('app')
 
 def load_config(filename):
     def ascii_encode_dict(data):
@@ -56,19 +58,20 @@ def make_call():
             'call' : door_station.get_sip_agent().make_call(uri)
         })
     except pj.Error, e:
-        print "Exception: " + str(e)
+        logger.exception("Exception: " + str(e))
         return "Exception: " + str(e)
 
 if __name__ == "__main__":
+    logging.basicConfig(filename='/tmp/doorstation.log', level=logging.DEBUG)
     try:
         # Start
         door_station = DoorStation()
-        door_station.init_ui(config['contacts'])
-        #door_station.init_sip_agent(config['sip_cfg'],config['log_level'])
+        door_station.init_ui(config['ui_cfg'],config['contacts'])
+        door_station.init_sip_agent(config['sip_cfg'],config['log_level'])
         flaskApp.run(host='0.0.0.0', port=config['http_port'],debug=True,use_reloader=False)
 
     except pj.Error, e:
-        print "Exception: " + str(e)
+        logger.error("Exception: " + str(e))
 
     # Shutdown
     door_station.get_sip_agent().transport = None

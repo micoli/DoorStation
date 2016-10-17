@@ -1,5 +1,8 @@
 import pjsua as pj
 import DoorStation
+import logging
+
+logger = logging.getLogger('SIPAgent')
 
 class CallCallback(pj.CallCallback):
     def __init__(self, sip_agent, call=None):
@@ -8,14 +11,11 @@ class CallCallback(pj.CallCallback):
 
     # Notification when call state has changed
     def on_state(self):
-        print "Call with", self.call.info().remote_uri,
-        print "is", self.call.info().state_text,
-        print "last code =", self.call.info().last_code,
-        print "(" + self.call.info().last_reason + ")"
+        logger.info("Call with %s is %s, ladst code = %s (%s)"%(self.call.info().remote_uri, self.call.info().state_text, self.call.info().last_code, self.call.info().last_reason))
 
         if self.call.info().state == pj.CallState.DISCONNECTED:
             self.sip_agent.current_call = None
-            print 'Current call is', self.sip_agent.current_call
+            logger.info('Current call is %s'%(self.sip_agent.current_call))
             self.sip_agent.door_station.notify(DoorStation.NOTIFICATION_DISCONNECTED)
 
     # Notification when call's media state has changed.
@@ -28,3 +28,6 @@ class CallCallback(pj.CallCallback):
             self.sip_agent.door_station.notify(DoorStation.NOTIFICATION_MEDIA_ACTIVE)
         else:
             self.sip_agent.door_station.notify(DoorStation.NOTIFICATION_MEDIA_INACTIVE)
+
+    def on_dtmf_digit(self, digits):
+        self.sip_agent.door_station.notify(DoorStation.NOTIFICATION_DTMF)

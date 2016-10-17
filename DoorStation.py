@@ -1,6 +1,7 @@
 import sys,os
 from SIPAgent import SIPAgent
 import UI
+import logging
 import requests
 
 NOTIFICATION_DOUBLE_CALL = 'double_call'
@@ -15,6 +16,9 @@ NOTIFICATION_CALL_INITIATED = 'call_initiated'
 NOTIFICATION_UI_OK = 'ui_ok'
 NOTIFICATION_CALL_REQUESTED = 'call_requested'
 NOTIFICATION_EXIT_REQUESTED = 'exit_requested'
+NOTIFICATION_DTMF = 'dtmf'
+
+logger = logging.getLogger('doorStation')
 
 class DoorStation:
     sip_agent = None
@@ -28,8 +32,8 @@ class DoorStation:
     def get_sip_agent(self):
         return self.sip_agent
 
-    def init_ui(self,contacts):
-        self.ui = UI.UI(self,contacts)
+    def init_ui(self,config,contacts):
+        self.ui = UI.UI(self,config,contacts)
         self.ui.start()
         return self.ui
 
@@ -37,7 +41,7 @@ class DoorStation:
         return self.ui
 
     def notify(self,notification,args=None):
-        print "notification %s [%s]"%(notification,repr(args))
+        logger.info("notification %s [%s]"%(notification,repr(args)))
         if notification == NOTIFICATION_EXIT_REQUESTED:
             os._exit(1)
         elif notification == NOTIFICATION_AUTO_ANSWER :
@@ -47,6 +51,8 @@ class DoorStation:
         elif notification == NOTIFICATION_SIP_START :
             pass
         elif notification == NOTIFICATION_SIP_AGENT_OK :
+            pass
+        elif notification == NOTIFICATION_DTMF :
             pass
         elif notification == NOTIFICATION_DOUBLE_CALL :
             self.ui.set_state(UI.UI_STATE_CONTACT)

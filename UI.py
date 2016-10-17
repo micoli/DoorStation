@@ -5,6 +5,7 @@ import DoorStation
 from RearmableTimer import RearmableTimer
 import readchar
 import time
+import logging
 
 UI_STATE_BOOTING = 0
 UI_STATE_CONTACT = 1
@@ -34,6 +35,7 @@ ENABLE = 0b00000100 # Enable bit
 E_PULSE = 0.0005
 E_DELAY = 0.0005
 
+logger = logging.getLogger('UI')
 
 class UI(Thread):
     bus = None
@@ -43,21 +45,25 @@ class UI(Thread):
     door_station = None
     state = UI_STATE_BOOTING
 
-    def __init__(self,door_station,contacts):
+    def __init__(self,door_station,cfg,contacts):
         Thread.__init__(self)
         self.rearmableTimer = RearmableTimer(self.light_shutdown)
         self.rearmableTimer.setCounterCallback(self.light_on)
+        self.rearmableTimer.run(1)
         self.contacts = contacts
         self.door_station = door_station
         self.door_station.notify(DoorStation.NOTIFICATION_UI_OK)
-        #self.lcd_init()
-        #self.gpio_init()
+        
+        self.lcd_init()
+        self.gpio_init()
+        
         self.print_at(' '+'-'*16+' '+' '*60,1,1)
         self.print_at('|'+' '*16+'|'+' '*60,1,2)
         self.print_at('|'+' '*16+'|'+' '*60,1,3)
         self.print_at(' '+'-'*16+' '+' '*60,1,4)
         
     def lcd_init(self):
+        logger.info('lcd init start')
         import smbus
         self.bus = smbus.SMBus(1) # Rev 2 Pi uses 1
         # Initialise display
@@ -69,6 +75,7 @@ class UI(Thread):
         self.lcd_byte(0x01,LCD_CMD) # 000001 Clear display
         time.sleep(E_DELAY)
         self.lcd_backlightoff()
+        logger.info('lcd init end')
         
     def lcd_byte(self, bits, mode):
         # Send byte to data pins
@@ -109,6 +116,7 @@ class UI(Thread):
         time.sleep(E_DELAY)
 
     def gpio_init(self):
+        logger.info('gpio init start')
         import RPi.GPIO as GPIO
         # Initialise display
         GPIO.setmode(GPIO.BCM)
@@ -116,6 +124,7 @@ class UI(Thread):
         self.gpio_init_button(GPIO, 17, self.gpio_cmd_up)
         self.gpio_init_button(GPIO, 22, self.gpio_cmd_down) 
         self.gpio_init_button(GPIO,  4, self.gpio_cmd_enter)
+        logger.info('gpio init iend')
 
     def gpio_cmd_up(self,channel):
         self.cmd_up()
@@ -198,13 +207,12 @@ class UI(Thread):
         self.display()
         while running:
             cmd = readchar.readkey()
-            print ""
             self.rearmableTimer.run(5)
             if cmd=="u":
                 self.cmd_up()
             elif cmd=="d":
                 self.cmd_down()
-            elif cmd=="":
+            elif cmd==" ":
                 self.cmd_enter()
             elif cmd=="x":
                 running = False
