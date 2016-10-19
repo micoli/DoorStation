@@ -20,12 +20,14 @@ import pjsua as pj
 import thread,threading
 from flask import Flask,jsonify
 from flask import render_template
-from flask import request, redirect, url_for
+from flask import request, redirect, url_for,send_file
 from flask_cors import CORS, cross_origin
 from DoorStation import DoorStation
 import UI
 import json
 import logging
+import glob
+import os
 
 flaskApp = Flask(__name__)
 CORS(flaskApp)
@@ -46,7 +48,17 @@ config = load_config('config.json')
 
 @flaskApp.route('/')
 def index():
-    return jsonify({})
+    return "\n".join([w.replace('/ram/', '<img src="/pic/').replace('.jpg','.jpg">') for w in sorted(glob.glob('/ram/*.jpg'), key=os.path.getsize,reverse=True)])
+
+@flaskApp.route('/pic/<pic>')
+def picture(pic):
+    return send_file("/ram/"+pic, mimetype='image/jpg')
+
+@flaskApp.route('/list')
+def thumb():
+    return jsonify({
+        "list" : [w.replace('/ram/', '') for w in sorted(glob.glob('/ram/*.jpg'), key=os.path.getsize,reverse=True) ]
+    })
 
 @flaskApp.route('/call/',)
 def make_call():
@@ -62,12 +74,13 @@ def make_call():
         return "Exception: " + str(e)
 
 if __name__ == "__main__":
-    logging.basicConfig(filename='/tmp/doorstation.log', level=logging.DEBUG)
+    logging.basicConfig(filename='/ram/doorstation.log', level=logging.DEBUG)
     try:
         # Start
         door_station = DoorStation()
         door_station.init_ui(config['ui_cfg'],config['contacts'])
         door_station.init_sip_agent(config['sip_cfg'],config['log_level'])
+        door_station.init_webcam({})
         flaskApp.run(host='0.0.0.0', port=config['http_port'],debug=True,use_reloader=False)
 
     except pj.Error, e:

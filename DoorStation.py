@@ -1,6 +1,7 @@
 import sys,os
 from SIPAgent import SIPAgent
 import UI
+import Webcam
 import logging
 import requests
 
@@ -24,8 +25,8 @@ class DoorStation:
     sip_agent = None
     ui = None
 
-    def init_sip_agent(self,cfg,log_level):
-        self.sip_agent = SIPAgent(self,cfg,log_level)
+    def init_sip_agent(self,config,log_level):
+        self.sip_agent = SIPAgent(self,config,log_level)
         self.sip_agent.start()
         return self.sip_agent
 
@@ -36,6 +37,12 @@ class DoorStation:
         self.ui = UI.UI(self,config,contacts)
         self.ui.start()
         return self.ui
+
+    def init_webcam(self,config):
+        self.webcam = Webcam.webcam(self,config)
+        self.webcam.start()
+        return self.webcam
+
 
     def get_ui(self):
         return self.ui
