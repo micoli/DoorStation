@@ -3,37 +3,16 @@ from SIPAgent import SIPAgent
 from threading import Thread
 import DoorStation
 from RearmableTimer import RearmableTimer
-import readchar
-import time
 import logging
+from menu import menu
+import pygame
+import ScreenSaver
 
 UI_STATE_BOOTING = 0
 UI_STATE_CONTACT = 1
 UI_STATE_CONFIRM_CALL = 2
 UI_STATE_CALLING = 3
 UI_STATE_INCALL = 4
-
-# Define some device parameters
-I2C_ADDR  = 0x3F # I2C device address
-LCD_WIDTH = 16   # Maximum characters per line
-
-# Define some device constants
-LCD_CHR = 1 # Mode - Sending data
-LCD_CMD = 0 # Mode - Sending command
-
-LCD_LINE_1 = 0x80 # LCD RAM address for the 1st line
-LCD_LINE_2 = 0xC0 # LCD RAM address for the 2nd line
-LCD_LINE_3 = 0x94 # LCD RAM address for the 3rd line
-LCD_LINE_4 = 0xD4 # LCD RAM address for the 4th line
-
-LCD_BACKLIGHT_ON  = 0x08  # On
-LCD_BACKLIGHT_OFF = 0x00  # Off
-
-ENABLE = 0b00000100 # Enable bit
-
-# Timing constants
-E_PULSE = 0.0005
-E_DELAY = 0.0005
 
 logger = logging.getLogger('UI')
 
@@ -45,105 +24,95 @@ class UI(Thread):
     door_station = None
     state = UI_STATE_BOOTING
 
-    def __init__(self,door_station,cfg,contacts):
+    def __init__(self,door_station,Surface,bus,cfg,contacts):
         Thread.__init__(self)
+        self.Surface = Surface
+        self.bus = bus
         self.rearmableTimer = RearmableTimer(self.light_shutdown)
         self.rearmableTimer.setCounterCallback(self.light_on)
         self.rearmableTimer.run(1)
         self.contacts = contacts
         self.door_station = door_station
         self.door_station.notify(DoorStation.NOTIFICATION_UI_OK)
+            
+        self.Items = [(contact['name'],k,"button") for k,contact in enumerate(self.contacts)]
+
+
+        self.contactIndex = 0
+        self.displayMode = "contactsList"
+        #displayMode = "screensaver"
+        self.foreverLoop = True
         
-        self.lcd_init()
-        self.gpio_init()
+        self.bus.subscribe('gui.menu', self.menuCallback)
         
-        self.print_at(' '+'-'*16+' '+' '*60,1,1)
-        self.print_at('|'+' '*16+'|'+' '*60,1,2)
-        self.print_at('|'+' '*16+'|'+' '*60,1,3)
-        self.print_at(' '+'-'*16+' '+' '*60,1,4)
+        font = pygame.font.Font("mksanstallx.ttf",12)
+        frontColor = (255, 255, 0)
+        halfColor = (200, 200, 0)
+        disabledColor = (155, 155, 0)
         
-    def lcd_init(self):
-        logger.info('lcd init start')
-        import smbus
-        self.bus = smbus.SMBus(1) # Rev 2 Pi uses 1
-        # Initialise display
-        self.lcd_byte(0x33,LCD_CMD) # 110011 Initialise
-        self.lcd_byte(0x32,LCD_CMD) # 110010 Initialise
-        self.lcd_byte(0x06,LCD_CMD) # 000110 Cursor move direction
-        self.lcd_byte(0x0C,LCD_CMD) # 001100 Display On,Cursor Off, Blink Off
-        self.lcd_byte(0x28,LCD_CMD) # 101000 Data length, number of lines, font size
-        self.lcd_byte(0x01,LCD_CMD) # 000001 Clear display
-        time.sleep(E_DELAY)
-        self.lcd_backlightoff()
-        logger.info('lcd init end')
-        
-    def lcd_byte(self, bits, mode):
-        # Send byte to data pins
-        # bits = the data
-        # mode = 1 for data
-        #        0 for command
-        bits_high = mode | (bits & 0xF0) | LCD_BACKLIGHT_ON
-        bits_low = mode | ((bits<<4) & 0xF0) | LCD_BACKLIGHT_ON
-        # High bits
-        self.bus.write_byte(I2C_ADDR, bits_high)
-        self.lcd_toggle_enable(bits_high)
-        # Low bits
-        self.bus.write_byte(I2C_ADDR, bits_low)
-        self.lcd_toggle_enable(bits_low)
+        self.screens={}
+        self.screens["contactsList"] = menu(self.Surface, "contactsList", self.bus, self.Items, 10, 180, 10,  30, 50, 300, font, focus=self.contactIndex, frontcolor=frontColor, halfcolor=halfColor, disabledcolor=disabledColor)
+        self.screens["callConfirmation"] = menu(self.Surface, "callConfirmation" ,self.bus , [('Appeler','call','button'),('Retour','cancel','button')], 140, 180, 100, 30, 50, 150, font,frontcolor=frontColor,halfcolor=halfColor,disabledcolor=disabledColor,additionalFunc = self.contactDisplay)
+        self.screens["call"] = menu(self.Surface,'call', self.bus, [('Retour','cancel','button')], 140, 180, 150, 30, 50, 150, font,frontcolor=frontColor,halfcolor=halfColor,disabledcolor=disabledColor,additionalFunc = self.contactDisplay)
+        self.screens["screenSaver"] = ScreenSaver.ScreenSaver(self.Surface,10,6)
+
+    def contactDisplay(self):
+        bigFont = pygame.font.Font("mksanstallx.ttf",24)
+        self.Surface.blit(bigFont.render(self.contact[0], True, (200, 200, 0)),(15, 40),None)
     
+    def blit_text(self,text, pos, font, justif=0,color=pygame.Color('black')):
+        x, y = pos
+        for line in text.splitlines():
+            y = y-font.render(line,0,color).get_height()/2
+            
+        for line in text.splitlines():
+            word_surface = font.render(line,0,color)
+            word_width, word_height = word_surface.get_size()
+            if justif==0:
+                offsetx = word_width
+            elif justif==1:
+                offsetx = word_width/2
+            elif justif==2:
+                offsetx = 0
+            self.Surface.blit(word_surface, (x-offsetx, y))
+            y += word_height  # Start on new row.
+        
+        
+    def setScreen(self,screenName):
+        self.displayMode=screenName
+        self.screens[self.displayMode].needToUpdate=True
+        
+    def menuCallback(self,bus,menuName,eventType,item=None,data=None,idx=0):
+        if menuName == "contactsList":
+            if eventType == "exit" or eventType == "cancel":
+                self.foreverLoop = False
+            elif eventType == "select" :   
+                self.contactIndex = idx
+                self.contact = self.Items[idx]
+                self.setScreen("callConfirmation")
+                self.screens["callConfirmation"].focus=0
+                
+        if menuName == "callConfirmation":
+            if eventType == "select" and item[1] == "call":
+                self.setScreen("call")
+            else: 
+                self.setScreen("contactsList")
     
+        if menuName == "call":
+            self.setScreen("contactsList")
+        
     def lcd_backlightoff(self):
-        mode = LCD_CMD
-        bits = 0x01
-        
-        bits_high = mode | (bits & 0xF0) | LCD_BACKLIGHT_OFF
-        bits_low = mode | ((bits<<4) & 0xF0) | LCD_BACKLIGHT_OFF
-        
-        # High bits
-        self.bus.write_byte(I2C_ADDR, bits_high)
-        self.lcd_toggle_enable(bits_high)
-        
-        # Low bits
-        self.bus.write_byte(I2C_ADDR, bits_low)
-        self.lcd_toggle_enable(bits_low)
+        pass
     
     def lcd_toggle_enable(self, bits):
-        # Toggle enable
-        time.sleep(E_DELAY)
-        self.bus.write_byte(I2C_ADDR, (bits | ENABLE))
-        time.sleep(E_PULSE)
-        self.bus.write_byte(I2C_ADDR,(bits & ~ENABLE))
-        time.sleep(E_DELAY)
-
-    def gpio_init(self):
-        logger.info('gpio init start')
-        import RPi.GPIO as GPIO
-        # Initialise display
-        GPIO.setmode(GPIO.BCM)
-
-        self.gpio_init_button(GPIO, 17, self.gpio_cmd_up)
-        self.gpio_init_button(GPIO, 22, self.gpio_cmd_down) 
-        self.gpio_init_button(GPIO,  4, self.gpio_cmd_enter)
-        logger.info('gpio init iend')
-
-    def gpio_cmd_up(self,channel):
-        self.cmd_up()
-
-    def gpio_cmd_down(self,channel):
-        self.cmd_down()
-
-    def gpio_cmd_enter(self,channel):
-        self.cmd_enter()
-        
-    def gpio_init_button(self,GPIO, pin, callback):
-        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(pin, GPIO.FALLING, callback=callback, bouncetime=300)
+        pass
 
     def light_on(self,cnt):
-        self.print_at("light on %d    " % (cnt),30,1)
+        pass
+        #self.print_at("light on %d    " % (cnt),30,1)
         
     def light_shutdown(self):
-        self.print_at("light off      " ,30,1)
+        #self.print_at("light off      " ,30,1)
         if self.bus != None:
             self.lcd_backlightoff()
         
@@ -153,76 +122,32 @@ class UI(Thread):
     def set_state(self,state):
         self.state = state
 
-    
-    def print_at(self,stri, x=1, y=1):
-        print "\033[%d;%df%s\033[%d;%df%s" % (y,x," "*16,y,x,stri)
-        
-    def display_string(self, message,line):
-        self.print_at(' '+'-'*16+' ',1,1)
-        self.print_at(' '+'-'*16+' ',1,4)
-        if line == LCD_LINE_1:
-            self.print_at(message,2,2)
-        else:
-            self.print_at(message,2,3)
-            
-        if self.bus != None:
-            # Send string to display
-            message = message.ljust(LCD_WIDTH," ")
-            self.lcd_byte(line, LCD_CMD)
-            for i in range(LCD_WIDTH):
-                self.lcd_byte(ord(message[i]),LCD_CHR)
-
     def display(self,a1=None,a2=None):
         if self.state == UI_STATE_BOOTING:
-            self.display_string("****  BOOT  ****" ,LCD_LINE_1)
-            self.display_string("****************" ,LCD_LINE_2)
             pass
-
         elif self.state == UI_STATE_CONTACT:
-            l1 = self.lines[0]
-            l2 = self.lines[1]
-            if (self.lines[0]==self.line):
-                self.display_string("[%2d] %-11.11s" % (l1+1,self.contacts[l1]['name']) ,LCD_LINE_1)
-                self.display_string(" %2d  %-11.11s" % (l2+1,self.contacts[l2]['name']) ,LCD_LINE_2)
-            else:
-                self.display_string(" %2d  %-11.11s" % (l1+1,self.contacts[l1]['name']) ,LCD_LINE_1)
-                self.display_string("[%2d] %-11.11s" % (l2+1,self.contacts[l2]['name']) ,LCD_LINE_2)
-
+            pass
         elif self.state == UI_STATE_CONFIRM_CALL:
-            self.display_string("Appel ?         " ,LCD_LINE_1)
-            self.display_string("%-16.16s" % (a2)  ,LCD_LINE_2)
-
+            pass
         elif self.state == UI_STATE_CALLING:
-            self.display_string("Appel en cours.." ,LCD_LINE_1)
-            self.display_string("%-16.16s" % (a2)  ,LCD_LINE_2)
-
+            pass
         elif self.state == UI_STATE_INCALL:
-            self.display_string(" %02d:%02d"%(10,20) ,LCD_LINE_1)
-            self.display_string("%-16.16s" % (a2)    ,LCD_LINE_2)
             pass
 
     def run(self):
-        running = True
-        self.set_state(UI_STATE_CONTACT)
-        self.display()
-        while running:
-            cmd = readchar.readkey()
-            self.rearmableTimer.run(5)
-            if cmd=="u":
-                self.cmd_up()
-            elif cmd=="d":
-                self.cmd_down()
-            elif cmd==" ":
-                self.cmd_enter()
-            elif cmd=="x":
-                running = False
-                self.cmd_exit()
-            else:
-                self.display()
-            time.sleep(0.1)
-        GPIO.cleanup()
+        self.setScreen("contactsList")
+        while self.foreverLoop:
+            print "e"
+            pygame.time.Clock().tick(10)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.bus.publish('gui.global',when=self.displayMode,eventType=pygame.QUIT)
+                elif event.type == pygame.KEYDOWN:
+                    self.bus.publish('gui.key',when=self.displayMode,eventKey=event.key)
+                       
+            self.screens[self.displayMode].run()
 
-    def cmd_up(self):
+    '''def cmd_up(self):
         if (self.state == UI_STATE_CONFIRM_CALL | self.state == UI_STATE_INCALL):
             self.state = UI_STATE_CONTACT
         else:
@@ -256,3 +181,4 @@ class UI(Thread):
 
     def cmd_exit(self):
         self.door_station.notify(DoorStation.NOTIFICATION_EXIT_REQUESTED)
+'''

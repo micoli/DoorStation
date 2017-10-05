@@ -1,33 +1,32 @@
 {
-        "log_level" : 0,
-        "http_port" : 8086,
-        "ui_cfg" : {
+	"log_level" : 0,
+	"http_port" : 8086,
+	"ui_cfg" : {},
+	"sip_cfg" : {
+		"registrar" : "192.168.1.129",
+		"username" : "5010",
+		"password" : "123456",
+		"local_sip_port" : 5080,
+		"devices" : {
+			"capture":2,
+			"playback":0
+		}
 	},
-        "sip_cfg" : {
-            "registrar" : "192.168.1.129",
-            "username" : "5010",
-            "password" : "123456",
-            "local_sip_port" : 5080,
-            "devices" : {
-		"capture":2,
-		"playback":0
-	    }
-        },
-        "contacts" : [{
-            "name":"aaaaa","number":"11"
-        },{
-            "name":"bbbbb bb bbb bbbbb bbbbbb","number":"22"
-        },{
-            "name":"ccccc","number":"33"
-        },{
-            "name":"ddddd","number":"44"
-        },{
-            "name":"eeeee","number":"55"
-        },{
-            "name":"fffff","number":"66"
-        },{
-            "name":"ggggg","number":"77"
-        },{
-            "name":"hhhhh","number":"88"
-        }]
+	"contacts" : [{
+		"name":"aaaaa","number":"11"
+	},{
+		"name":"bbbbb bb bbb bbbbb bbbbbb","number":"22"
+	},{
+		"name":"ccccc","number":"33"
+	},{
+		"name":"ddddd","number":"44"
+	},{
+		"name":"eeeee","number":"55"
+	},{
+		"name":"fffff","number":"66"
+	},{
+		"name":"ggggg","number":"77"
+	},{
+		"name":"hhhhh","number":"88"
+	}]
 }

@@ -1,9 +1,10 @@
 import sys,os
 from SIPAgent import SIPAgent
 import UI
-import Webcam
+#import Webcam
 import logging
 import requests
+import ScreenSaver
 
 NOTIFICATION_DOUBLE_CALL = 'double_call'
 NOTIFICATION_AUTO_ANSWER = 'auto_answer'
@@ -24,7 +25,13 @@ logger = logging.getLogger('doorStation')
 class DoorStation:
     sip_agent = None
     ui = None
-
+    bus = None
+    Surface = None
+    
+    def __init__(self,bus,Surface):
+        self.bus = bus
+        self.Surface = Surface
+        
     def init_sip_agent(self,config,log_level):
         self.sip_agent = SIPAgent(self,config,log_level)
         self.sip_agent.start()
@@ -34,13 +41,13 @@ class DoorStation:
         return self.sip_agent
 
     def init_ui(self,config,contacts):
-        self.ui = UI.UI(self,config,contacts)
+        self.ui = UI.UI(self,self.Surface,self.bus,config,contacts)
         self.ui.start()
         return self.ui
 
     def init_webcam(self,config):
-        self.webcam = Webcam.webcam(self,config)
-        self.webcam.start()
+        #self.webcam = Webcam.webcam(self,config)
+        #self.webcam.start()
         return self.webcam
 
 
@@ -88,3 +95,11 @@ class DoorStation:
             pass
         elif notification == NOTIFICATION_EXIT_REQUESTED :
             pass
+
+    def shutdown(self):
+        agent = self.get_sip_agent()
+        agent.transport = None
+        agent.account.delete()
+        agent.account = None
+        agent.lib.destroy()
+        agent.lib = None

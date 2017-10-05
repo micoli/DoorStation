@@ -16,6 +16,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+#pip install pygame
+#pip install cyrusbus
+
+from menu import menu
+import ScreenSaver
+import pygame
+import time
+from cyrusbus import Bus
+
 import pjsua as pj
 import thread,threading
 from flask import Flask,jsonify
@@ -23,7 +32,8 @@ from flask import render_template
 from flask import request, redirect, url_for,send_file
 from flask_cors import CORS, cross_origin
 from DoorStation import DoorStation
-import UI
+
+#import UI
 import json
 import logging
 import glob
@@ -35,6 +45,10 @@ CORS(flaskApp)
 door_station = None
 logger = logging.getLogger('app')
 
+pygame.init()
+pygame.display.set_caption("DoorStation Tester")
+Surface = pygame.display.set_mode((320,200))
+
 def load_config(filename):
     def ascii_encode_dict(data):
         def ascii_encode(x):
@@ -45,6 +59,12 @@ def load_config(filename):
     return json.loads(open(filename).read(100000),object_hook=ascii_encode_dict)
 
 config = load_config('config.json')
+
+def bus_subscribe(eventName):
+    def tags_decorator(func):
+        bus.subscribe(eventName, func)
+        return func
+    return tags_decorator
 
 @flaskApp.route('/')
 def index():
@@ -73,22 +93,50 @@ def make_call():
         logger.exception("Exception: " + str(e))
         return "Exception: " + str(e)
 
+
+bus = Bus()
+
 if __name__ == "__main__":
     logging.basicConfig(filename='/ram/doorstation.log', level=logging.DEBUG)
     try:
         # Start
-        door_station = DoorStation()
+        door_station = DoorStation(bus,Surface)
         door_station.init_ui(config['ui_cfg'],config['contacts'])
-        door_station.init_sip_agent(config['sip_cfg'],config['log_level'])
-        door_station.init_webcam({})
+        
+        #door_station.init_sip_agent(config['sip_cfg'],config['log_level'])
+        #door_station.init_webcam({})
+        
         flaskApp.run(host='0.0.0.0', port=config['http_port'],debug=True,use_reloader=False)
 
     except pj.Error, e:
         logger.error("Exception: " + str(e))
 
     # Shutdown
-    door_station.get_sip_agent().transport = None
-    door_station.get_sip_agent().account.delete()
-    door_station.get_sip_agent().account = None
-    door_station.get_sip_agent().lib.destroy()
-    door_station.get_sip_agent().lib = None
+    door_station.shutdown()
+
+
+
+
+contacts = [
+    ("01 Jaime"                  ,"01234567"),
+    ("02 Velvet Frida Vowell"    ,"01234567"),
+    ("03 Frida Forne"            ,"01234567"),
+    ("04 Marlyn Muldowney 12"    ,"01234567"),
+    ("05 America Ausmus"         ,"01234567"),
+    ("06 Alissa Aberle"          ,"01234567"),
+    ("07 Clarissa Coltuithar"    ,"01234567")
+]
+
+title = [
+    "Adresse 1",
+    "Adresse 2",
+    "       ",
+    "HH:II"
+]
+
+        
+pygame.quit()
+
+
+
+
